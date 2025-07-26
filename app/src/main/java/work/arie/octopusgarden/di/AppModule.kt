@@ -20,10 +20,10 @@ object AppModule {
             url = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task",
             licenseUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
             needsAuth = true,
-            preferredBackend = LlmInference.Backend.GPU,
-            temperature = 1f,
-            topK = 64,
-            topP = 0.95f,
+            preferredBackend = LlmInference.Backend.CPU,
+            temperature = 0.8f,
+            topK = 20,
+            topP = 0.9f,
             maxToken = 512
         )
     }

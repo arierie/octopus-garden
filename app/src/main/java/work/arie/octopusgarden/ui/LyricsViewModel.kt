@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import work.arie.octopusgarden.core.InferenceManager
 import work.arie.octopusgarden.model.UiState
@@ -31,7 +32,7 @@ internal class LyricsViewModel @Inject constructor(
 
     fun runInference() {
         viewModelScope.launch(Dispatchers.IO) {
-            inferenceManager.runInference(_uiStateFlow.value.title)
+            inferenceManager.runInference(_uiStateFlow.value.body)
                 .collect { result ->
                     _uiStateFlow.emit(_uiStateFlow.value.copy(body = result))
                 }

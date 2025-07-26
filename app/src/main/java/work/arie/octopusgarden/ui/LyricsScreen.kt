@@ -7,16 +7,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.Icon
@@ -58,6 +57,7 @@ private fun LyricsComponent(
     val backgroundColor = Color(0xFFF5E6D3)
     val textColor = Color(0xFF2C2C2C)
     val lightBulbColor = Color(0xFFE6FF4D)
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
@@ -91,33 +91,31 @@ private fun LyricsComponent(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .verticalScroll(scrollState)
         ) {
-            Text(
-                text = "Title",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
             BasicTextField(
                 value = uiModel.title,
                 onValueChange = onTitleChange,
                 textStyle = TextStyle(
-                    fontSize = 18.sp,
+                    fontSize = 24.sp,
                     color = textColor
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-            )
-
-            Text(
-                text = "Body",
-                fontSize = 16.sp,
-                color = textColor.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 16.dp)
+                    .padding(bottom = 16.dp),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (uiModel.title.isEmpty()) {
+                            Text(
+                                text = "Your song title...",
+                                color = textColor.copy(alpha = 0.5f),
+                                fontSize = 24.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
             )
 
             BasicTextField(
@@ -127,9 +125,19 @@ private fun LyricsComponent(
                     fontSize = 16.sp,
                     color = textColor
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (uiModel.body.isEmpty()) {
+                            Text(
+                                text = "Write your lyrics prompt here...\ne.g. 'here comes the sun'",
+                                color = textColor.copy(alpha = 0.5f),
+                                fontSize = 16.sp
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
             )
         }
 
@@ -155,23 +163,6 @@ private fun LyricsComponent(
                     modifier = Modifier.size(28.dp)
                 )
             }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(134.dp)
-                    .height(5.dp)
-                    .background(
-                        color = textColor.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(2.5.dp)
-                    )
-            )
         }
     }
 }

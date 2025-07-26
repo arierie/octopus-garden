@@ -4,8 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
+import com.google.mediapipe.tasks.genai.llminference.ProgressListener
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -23,6 +25,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.max
+import androidx.core.net.toUri
 
 private const val TAG = "InferenceManager"
 
@@ -50,12 +53,13 @@ internal class InferenceManager @Inject constructor(
         llmInference.close()
     }
 
-    suspend fun runInference(body: String): Flow<String> = channelFlow<String> {
+    fun runInference(body: String): Flow<String> = channelFlow {
         try {
             suspendCancellableCoroutine { continuation ->
-                val asyncInference =
-                    llmInference.generateResponseAsync(body) { partialResult, isDone ->
-                        trySend(partialResult)
+                var output = ""
+                val asyncInference = generateResponseAsync(body) { partialResult, isDone ->
+                        output += partialResult
+                        trySend(output)
                         if (isDone) {
                             continuation.resume(Unit)
                         }
@@ -70,6 +74,13 @@ internal class InferenceManager @Inject constructor(
             send(body)
         }
     }.flowOn(Dispatchers.IO)
+
+    private fun generateResponseAsync(prompt: String, progressListener: ProgressListener<String>) : ListenableFuture<String> {
+        val formattedPrompt = "Write the lyrics start with: $prompt"
+        Log.e(TAG, "generateResponseAsync: $formattedPrompt")
+        llmInferenceSession.addQueryChunk(formattedPrompt)
+        return llmInferenceSession.generateResponseAsync(progressListener)
+    }
 
     private fun createEngine() {
         val inferenceOptions = LlmInference.LlmInferenceOptions.builder()
@@ -104,7 +115,7 @@ internal class InferenceManager @Inject constructor(
 
     private fun modelPathFromUrl(context: Context): String {
         if (configuration.url.isNotEmpty()) {
-            val urlFileName = Uri.parse(configuration.url).lastPathSegment
+            val urlFileName = configuration.url.toUri().lastPathSegment
             if (!urlFileName.isNullOrEmpty()) {
                 return File(context.filesDir, urlFileName).absolutePath
             }
