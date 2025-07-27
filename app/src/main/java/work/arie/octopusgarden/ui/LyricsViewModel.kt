@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import work.arie.octopusgarden.core.InferenceManager
+import work.arie.octopusgarden.model.InferenceState
+import work.arie.octopusgarden.model.InitState
 import work.arie.octopusgarden.model.UiState
 import javax.inject.Inject
 
@@ -22,7 +24,29 @@ internal class LyricsViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiStateFlow.asStateFlow()
 
     init {
-        inferenceManager.initialize()
+        viewModelScope.launch {
+            inferenceManager.initialize()
+                .collect { state ->
+                    when (state) {
+                        is InitState.Loading -> {
+                            _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = true))
+                        }
+
+                        is InitState.Success -> {
+                            _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = false))
+                        }
+
+                        is InitState.Error -> {
+                            _uiStateFlow.emit(
+                                _uiStateFlow.value.copy(
+                                    isLoading = false,
+                                    errorMessage = state.message
+                                )
+                            )
+                        }
+                    }
+                }
+        }
     }
 
     override fun onCleared() {
@@ -34,7 +58,29 @@ internal class LyricsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             inferenceManager.runInference(_uiStateFlow.value.title, _uiStateFlow.value.body)
                 .collect { result ->
-                    _uiStateFlow.emit(_uiStateFlow.value.copy(body = result))
+                    when (result) {
+                        is InferenceState.Loading -> {
+                            _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = true))
+                        }
+
+                        is InferenceState.Success -> {
+                            _uiStateFlow.emit(
+                                _uiStateFlow.value.copy(
+                                    isLoading = false,
+                                    body = result.text
+                                )
+                            )
+                        }
+
+                        is InferenceState.Error -> {
+                            _uiStateFlow.emit(
+                                _uiStateFlow.value.copy(
+                                    isLoading = false,
+                                    errorMessage = result.message
+                                )
+                            )
+                        }
+                    }
                 }
         }
     }

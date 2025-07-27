@@ -26,42 +26,59 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.max
 import androidx.core.net.toUri
+import androidx.lifecycle.asFlow
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import kotlinx.coroutines.flow.first
+import work.arie.octopusgarden.model.InferenceState
+import work.arie.octopusgarden.model.InitState
 
 @Singleton
 internal class InferenceManager @Inject constructor(
     @ApplicationContext
     private val context: Context,
     private val configuration: Configuration,
+    private val workManager: WorkManager,
 ) {
 
     private lateinit var llmInference: LlmInference
     private lateinit var llmInferenceSession: LlmInferenceSession
 
-    fun initialize() {
-        if (!modelExists()) {
-            throw Throwable("Model not found at path: ${configuration.path}")
+    fun initialize(): Flow<InitState> = flow {
+        emit(InitState.Loading)
+        try {
+            if (!modelExists()) {
+                emit(InitState.Loading)
+                downloadModel()
+            }
+            createEngine()
+            createSession()
+            emit(InitState.Success)
+        } catch (e: Exception) {
+            emit(InitState.Error(e.message ?: "Initialization failed"))
         }
-
-        createEngine()
-        createSession()
-    }
+    }.flowOn(Dispatchers.IO)
 
     fun close() {
         llmInferenceSession.close()
         llmInference.close()
     }
 
-    fun runInference(title: String, firstLine: String): Flow<String> = channelFlow {
+    fun runInference(title: String, firstLine: String): Flow<InferenceState> = channelFlow {
+        send(InferenceState.Loading)
         try {
+            var output = ""
             suspendCancellableCoroutine { continuation ->
-                var output = ""
                 val asyncInference = generateResponseAsync(title, firstLine) { partialResult, isDone ->
-                        output += partialResult
-                        trySend(output)
-                        if (isDone) {
-                            continuation.resume(Unit)
-                        }
+                    output += partialResult
+                    trySend(InferenceState.Success(output))
+                    if (isDone) {
+                        continuation.resume(Unit)
                     }
+                }
 
                 continuation.invokeOnCancellation {
                     asyncInference.cancel(true)
@@ -69,15 +86,15 @@ internal class InferenceManager @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Inference error: ${e.message}", e)
-            send(firstLine)
+            send(InferenceState.Error(e.message ?: "Inference failed"))
         }
     }.flowOn(Dispatchers.IO)
 
     private fun generateResponseAsync(
         title: String,
         firstLine: String,
-        progressListener: ProgressListener<String>
-    ) : ListenableFuture<String> {
+        progressListener: ProgressListener<String>,
+    ): ListenableFuture<String> {
         val formattedPrompt = String.format(SYSTEM_PROMPT, title, firstLine)
         Log.e(TAG, "generateResponseAsync: $formattedPrompt")
         llmInferenceSession.addQueryChunk(formattedPrompt)
@@ -139,9 +156,32 @@ internal class InferenceManager @Inject constructor(
         return File(modelPath()).exists()
     }
 
+    private suspend fun downloadModel() {
+        val workRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
+            .setInputData(
+                workDataOf(
+                    URL to configuration.url,
+                    PATH to modelPathFromUrl(context)
+                )
+            )
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        workManager.enqueue(workRequest)
+
+        workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow()
+            .first { it?.state?.isFinished == true }
+    }
+
     private companion object {
 
         const val TAG = "InferenceManager"
         const val SYSTEM_PROMPT = "Write the lyrics with the title: %s and start with: %s"
+        const val URL = "url"
+        const val PATH = "path"
     }
 }
