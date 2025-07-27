@@ -6,7 +6,6 @@ data class Configuration(
     val path: String,
     val url: String,
     val licenseUrl: String,
-    val needsAuth: Boolean,
     val preferredBackend: LlmInference.Backend?,
     val temperature: Float,
     val topK: Int,

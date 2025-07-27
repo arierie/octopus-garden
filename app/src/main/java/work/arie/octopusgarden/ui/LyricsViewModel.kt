@@ -32,7 +32,7 @@ internal class LyricsViewModel @Inject constructor(
 
     fun runInference() {
         viewModelScope.launch(Dispatchers.IO) {
-            inferenceManager.runInference(_uiStateFlow.value.body)
+            inferenceManager.runInference(_uiStateFlow.value.title, _uiStateFlow.value.body)
                 .collect { result ->
                     _uiStateFlow.emit(_uiStateFlow.value.copy(body = result))
                 }

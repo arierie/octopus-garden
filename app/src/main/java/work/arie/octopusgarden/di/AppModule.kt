@@ -17,9 +17,8 @@ object AppModule {
     fun provideModel(): Configuration {
         return Configuration(
             path = "/data/local/tmp/gemma3-1b-it-q8.task",
-            url = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task",
-            licenseUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
-            needsAuth = true,
+            url = "https://huggingface.co/arieridwans/gemma3-1B-it-lyrics-v1/blob/main/resolve/main/gemma3_1b_it_q8_ekv1280.task",
+            licenseUrl = "https://huggingface.co/arieridwans/gemma3-1B-it-lyrics-v1",
             preferredBackend = LlmInference.Backend.CPU,
             temperature = 0.8f,
             topK = 20,

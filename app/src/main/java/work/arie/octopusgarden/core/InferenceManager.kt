@@ -27,8 +27,6 @@ import kotlin.coroutines.resumeWithException
 import kotlin.math.max
 import androidx.core.net.toUri
 
-private const val TAG = "InferenceManager"
-
 @Singleton
 internal class InferenceManager @Inject constructor(
     @ApplicationContext
@@ -53,11 +51,11 @@ internal class InferenceManager @Inject constructor(
         llmInference.close()
     }
 
-    fun runInference(body: String): Flow<String> = channelFlow {
+    fun runInference(title: String, firstLine: String): Flow<String> = channelFlow {
         try {
             suspendCancellableCoroutine { continuation ->
                 var output = ""
-                val asyncInference = generateResponseAsync(body) { partialResult, isDone ->
+                val asyncInference = generateResponseAsync(title, firstLine) { partialResult, isDone ->
                         output += partialResult
                         trySend(output)
                         if (isDone) {
@@ -71,12 +69,16 @@ internal class InferenceManager @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Inference error: ${e.message}", e)
-            send(body)
+            send(firstLine)
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun generateResponseAsync(prompt: String, progressListener: ProgressListener<String>) : ListenableFuture<String> {
-        val formattedPrompt = "Write the lyrics start with: $prompt"
+    private fun generateResponseAsync(
+        title: String,
+        firstLine: String,
+        progressListener: ProgressListener<String>
+    ) : ListenableFuture<String> {
+        val formattedPrompt = String.format(SYSTEM_PROMPT, title, firstLine)
         Log.e(TAG, "generateResponseAsync: $formattedPrompt")
         llmInferenceSession.addQueryChunk(formattedPrompt)
         return llmInferenceSession.generateResponseAsync(progressListener)
@@ -135,5 +137,11 @@ internal class InferenceManager @Inject constructor(
 
     private fun modelExists(): Boolean {
         return File(modelPath()).exists()
+    }
+
+    private companion object {
+
+        const val TAG = "InferenceManager"
+        const val SYSTEM_PROMPT = "Write the lyrics with the title: %s and start with: %s"
     }
 }
