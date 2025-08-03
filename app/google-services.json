@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "822356077076",
+    "project_id": "octopus-garden",
+    "storage_bucket": "octopus-garden.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:822356077076:android:9a54c1e5cf5c81250e1501",
+        "android_client_info": {
+          "package_name": "work.arie.octopusgarden"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9_x2EJJ9R0mQ-FBcuX4pSs0K8XlNtgfU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
