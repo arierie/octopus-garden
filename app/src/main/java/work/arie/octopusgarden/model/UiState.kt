@@ -10,8 +10,8 @@ data class UiState(
     companion object {
 
         val DEFAULT = UiState(
-            title = "tomorrow",
-            body = "tomorrow, i want you to be by my side",
+            title = "",
+            body = "",
             errorMessage = "",
             isLoading = false
         )
