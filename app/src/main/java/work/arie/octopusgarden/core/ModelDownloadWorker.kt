@@ -9,7 +9,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.IOException
 
-class ModelDownloadWorker(
+internal class ModelDownloadWorker(
     context: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {

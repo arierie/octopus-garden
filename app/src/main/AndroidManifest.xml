@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+
     <application
         android:name=".OctopusGardenApp"
         android:allowBackup="true"
@@ -13,6 +14,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OctopusGarden"
         tools:targetApi="31">
+        <!-- Required to put logs from the Firebase performance monitoring -->
+        <meta-data
+            android:name="firebase_performance_logcat_enabled"
+            android:value="true" />
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -26,8 +31,12 @@
         <!-- Required to initialize the LlmInference -->
         <uses-native-library
             android:name="libOpenCL.so"
-            android:required="false"/>
-        <uses-native-library android:name="libOpenCL-car.so" android:required="false"/>
-        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false"/>
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL-car.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL-pixel.so"
+            android:required="false" />
     </application>
 </manifest>

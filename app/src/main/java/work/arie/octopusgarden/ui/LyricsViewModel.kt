@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import work.arie.octopusgarden.core.InferenceManager
+import work.arie.octopusgarden.core.PerformanceMonitor
 import work.arie.octopusgarden.model.InferenceState
 import work.arie.octopusgarden.model.InitState
 import work.arie.octopusgarden.model.UiState
@@ -18,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 internal class LyricsViewModel @Inject constructor(
     private val inferenceManager: InferenceManager,
+    private val performanceMonitor: PerformanceMonitor
 ) : ViewModel() {
 
     private val _uiStateFlow: MutableStateFlow<UiState> = MutableStateFlow(UiState.DEFAULT)
@@ -30,10 +32,12 @@ internal class LyricsViewModel @Inject constructor(
                     when (state) {
                         is InitState.Loading -> {
                             _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = true))
+                            performanceMonitor.startColdStartTrace()
                         }
 
                         is InitState.Success -> {
                             _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = false))
+                            performanceMonitor.stopColdStartTrace()
                         }
 
                         is InitState.Error -> {
@@ -43,6 +47,7 @@ internal class LyricsViewModel @Inject constructor(
                                     errorMessage = state.message
                                 )
                             )
+                            performanceMonitor.stopColdStartTrace()
                         }
                     }
                 }
@@ -61,6 +66,7 @@ internal class LyricsViewModel @Inject constructor(
                     when (result) {
                         is InferenceState.Loading -> {
                             _uiStateFlow.emit(_uiStateFlow.value.copy(isLoading = true))
+                            performanceMonitor.startFirstTokenTrace()
                         }
 
                         is InferenceState.Success -> {
@@ -70,6 +76,7 @@ internal class LyricsViewModel @Inject constructor(
                                     body = result.text
                                 )
                             )
+                            performanceMonitor.stopFirstTokenTrace()
                         }
 
                         is InferenceState.Error -> {
@@ -79,6 +86,7 @@ internal class LyricsViewModel @Inject constructor(
                                     errorMessage = result.message
                                 )
                             )
+                            performanceMonitor.stopFirstTokenTrace()
                         }
                     }
                 }

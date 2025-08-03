@@ -1,40 +1,34 @@
 package work.arie.octopusgarden.core
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.viewModelScope
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import com.google.mediapipe.tasks.genai.llminference.ProgressListener
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asExecutor
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import work.arie.octopusgarden.model.Configuration
-import java.io.File
-import javax.inject.Inject
-import javax.inject.Singleton
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.math.max
 import androidx.core.net.toUri
 import androidx.lifecycle.asFlow
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.await
 import androidx.work.workDataOf
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
+import com.google.mediapipe.tasks.genai.llminference.ProgressListener
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.suspendCancellableCoroutine
+import work.arie.octopusgarden.model.Configuration
 import work.arie.octopusgarden.model.InferenceState
 import work.arie.octopusgarden.model.InitState
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.resume
 
 @Singleton
 internal class InferenceManager @Inject constructor(
@@ -52,7 +46,11 @@ internal class InferenceManager @Inject constructor(
         try {
             if (!modelExists()) {
                 emit(InitState.Loading)
-                downloadModel()
+                val downloadSuccess = downloadModel()
+                if (!downloadSuccess) {
+                    emit(InitState.Error("Model download failed"))
+                    return@flow
+                }
             }
             createEngine()
             createSession()
@@ -96,7 +94,6 @@ internal class InferenceManager @Inject constructor(
         progressListener: ProgressListener<String>,
     ): ListenableFuture<String> {
         val formattedPrompt = String.format(SYSTEM_PROMPT, title, firstLine)
-        Log.e(TAG, "generateResponseAsync: $formattedPrompt")
         llmInferenceSession.addQueryChunk(formattedPrompt)
         return llmInferenceSession.generateResponseAsync(progressListener)
     }
@@ -156,7 +153,7 @@ internal class InferenceManager @Inject constructor(
         return File(modelPath()).exists()
     }
 
-    private suspend fun downloadModel() {
+    private suspend fun downloadModel(): Boolean {
         val workRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
             .setInputData(
                 workDataOf(
@@ -171,10 +168,12 @@ internal class InferenceManager @Inject constructor(
             )
             .build()
 
-        workManager.enqueue(workRequest)
+        workManager.enqueue(workRequest).await()
 
-        workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow()
+        val finalState = workManager.getWorkInfoByIdLiveData(workRequest.id).asFlow()
             .first { it?.state?.isFinished == true }
+
+        return finalState?.state == androidx.work.WorkInfo.State.SUCCEEDED
     }
 
     private companion object {
