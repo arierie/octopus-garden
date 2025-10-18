@@ -68,11 +68,13 @@ internal class InferenceManager @Inject constructor(
     fun runInference(title: String, firstLine: String): Flow<InferenceState> = channelFlow {
         send(InferenceState.Loading)
         try {
-            var output = ""
+            var fullOutput = ""
+            createSession()
             suspendCancellableCoroutine { continuation ->
                 val asyncInference = generateResponseAsync(title, firstLine) { partialResult, isDone ->
-                    output += partialResult
-                    trySend(InferenceState.Success(output))
+                    fullOutput += partialResult
+                    val cleanedOutput = cleanModelOutput(fullOutput)
+                    trySend(InferenceState.Success(cleanedOutput))
                     if (isDone) {
                         continuation.resume(Unit)
                     }
@@ -176,10 +178,49 @@ internal class InferenceManager @Inject constructor(
         return finalState?.state == androidx.work.WorkInfo.State.SUCCEEDED
     }
 
+    private fun cleanModelOutput(rawOutput: String): String {
+        val songSectionPattern = Regex(
+            "\\((Intro|Verse\\s*\\d*|Chorus|Bridge|Pre-Chorus|Outro|Hook)\\)",
+            RegexOption.IGNORE_CASE
+        )
+
+        if (!songSectionPattern.containsMatchIn(rawOutput)) {
+            return "---"
+        }
+
+        val firstSectionMatch = songSectionPattern.find(rawOutput)
+        var cleanedOutput = if (firstSectionMatch != null) {
+            rawOutput.substring(firstSectionMatch.range.first).trim()
+        } else {
+            return "---"
+        }
+
+        val endMarkerIndex = cleanedOutput.indexOf("---")
+        if (endMarkerIndex != -1) {
+            cleanedOutput = cleanedOutput.substring(0, endMarkerIndex).trim()
+        }
+
+        val allSectionMatches = songSectionPattern.findAll(cleanedOutput).toList()
+        if (allSectionMatches.isNotEmpty()) {
+            val lastSectionMatch = allSectionMatches.last()
+            val textAfterLastSection = cleanedOutput.substring(lastSectionMatch.range.last + 1)
+
+            val songEndPattern = Regex("\\n\\n(?![\\w\\s]*\\n)")
+            val endMatch = songEndPattern.find(textAfterLastSection)
+
+            if (endMatch != null) {
+                val cutoffPoint = lastSectionMatch.range.last + 1 + endMatch.range.first + 1
+                cleanedOutput = cleanedOutput.substring(0, cutoffPoint).trim()
+            }
+        }
+
+        return cleanedOutput.trim()
+    }
+
     private companion object {
 
         const val TAG = "InferenceManager"
-        const val SYSTEM_PROMPT = "Write the lyrics with the title: %s and start with: %s"
+        const val SYSTEM_PROMPT = "Write the lyrics with the title: \"%s\", and start with: \"%s\"."
         const val URL = "url"
         const val PATH = "path"
     }

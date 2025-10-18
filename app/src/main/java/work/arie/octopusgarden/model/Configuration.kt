@@ -10,5 +10,5 @@ data class Configuration(
     val temperature: Float,
     val topK: Int,
     val topP: Float,
-    val maxToken: Int = 2048
+    val maxToken: Int
 )
