@@ -19,3 +19,21 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep Google Protobuf classes
+-keep class com.google.protobuf.** { *; }
+-dontwarn com.google.protobuf.**
+
+# Keep MediaPipe classes
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+
+# Keep proto-related annotations
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+
+# Keep proto field annotations
+-keepattributes *Annotation*
+
+# Additional MediaPipe specific rules
+-keep class com.google.mediapipe.tasks.genai.** { *; }
+-dontwarn com.google.mediapipe.tasks.genai.**
