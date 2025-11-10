@@ -26,7 +26,7 @@ object AppModule {
             temperature = 0.8f,
             topK = 20,
             topP = 0.9f,
-            maxToken = 512
+            maxToken = 2048
         )
     }
 

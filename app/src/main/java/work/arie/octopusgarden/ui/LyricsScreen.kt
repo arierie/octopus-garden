@@ -1,41 +1,44 @@
 package work.arie.octopusgarden.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -62,12 +65,23 @@ private fun LyricsComponent(
     uiModel: UiState,
     onTitleChange: (String) -> Unit,
     onBodyChange: (String) -> Unit,
-    onBuildClick: () -> Unit
+    onBuildClick: () -> Unit,
 ) {
     val backgroundColor = Color(0xFFF5E6D3)
     val textColor = Color(0xFF2C2C2C)
+    val greyTextColor = Color(0xFF8A8A8A)
     val lightBulbColor = Color(0xFFE6FF4D)
     val scrollState = rememberScrollState()
+    val isScrolledUp = scrollState.value > 100
+    val fabVisible = !isScrolledUp
+
+    val bodyTextFieldValue = remember(uiModel.body) {
+        TextFieldValue(
+            text = uiModel.body,
+            selection = TextRange(uiModel.body.length)
+        )
+    }
+
     val icon = if (uiModel.isLoading) {
         painterResource(id = R.drawable.ic_hourglass)
     } else {
@@ -95,93 +109,104 @@ private fun LyricsComponent(
         }
     }
 
-    Column(
+    LaunchedEffect(uiModel.body, uiModel.isLoading) {
+        if (uiModel.body.isNotEmpty() && !uiModel.isLoading) {
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
             .systemBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = "Logo",
-                tint = textColor
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
             Text(
                 text = "Sketches",
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
-                color = textColor
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .verticalScroll(scrollState)
-        ) {
-            BasicTextField(
-                value = uiModel.title,
-                onValueChange = onTitleChange,
-                textStyle = TextStyle(
-                    fontSize = 24.sp,
-                    color = textColor
-                ),
+                color = textColor,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                decorationBox = { innerTextField ->
-                    Box {
+                    .padding(vertical = 20.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(scrollState)
+            ) {
+                BasicTextField(
+                    value = uiModel.title,
+                    onValueChange = onTitleChange,
+                    textStyle = LocalTextStyle.current.copy(
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    ),
+                    decorationBox = { innerTextField ->
                         if (uiModel.title.isEmpty()) {
                             Text(
-                                text = "Your song title...",
-                                color = textColor.copy(alpha = 0.5f),
-                                fontSize = 24.sp
+                                text = "Song title...",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = greyTextColor
                             )
                         }
                         innerTextField()
-                    }
-                }
-            )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                )
 
-            BasicTextField(
-                value = uiModel.body,
-                onValueChange = onBodyChange,
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = textColor
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                decorationBox = { innerTextField ->
-                    Box {
+                BasicTextField(
+                    value = bodyTextFieldValue,
+                    onValueChange = { newValue ->
+                        onBodyChange(newValue.text)
+                    },
+                    textStyle = LocalTextStyle.current.copy(
+                        fontSize = 16.sp,
+                        color = textColor,
+                        lineHeight = 24.sp
+                    ),
+                    decorationBox = { innerTextField ->
                         if (uiModel.body.isEmpty()) {
                             Text(
                                 text = "Write your lyrics prompt here...\ne.g. 'here comes the sun'",
-                                color = textColor.copy(alpha = 0.5f),
-                                fontSize = 16.sp
+                                color = greyTextColor,
+                                fontSize = 16.sp,
+                                lineHeight = 24.sp
                             )
                         }
                         innerTextField()
-                    }
-                }
-            )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 120.dp)
+                )
+            }
         }
 
-        Box(
+        AnimatedVisibility(
+            visible = fabVisible,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300)),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 40.dp),
-            contentAlignment = Alignment.Center
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 40.dp)
         ) {
             IconButton(
                 enabled = !uiModel.isLoading,
